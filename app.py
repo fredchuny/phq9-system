@@ -154,15 +154,15 @@ else:
         score_map = {options[0]: 0, options[1]: 1, options[2]: 2, options[3]: 3}
 
         # 9 道題目
-        q1 = st.radio("1. 做任何事情都提不起勁或沒有樂趣？", options, index=0)
-        q2 = st.radio("2. 感到心情低落、沮喪或絕望？", options, index=0)
-        q3 = st.radio("3. 入睡困難、易醒或睡得太多？", options, index=0)
-        q4 = st.radio("4. 覺得疲倦或沒有活力？", options, index=0)
-        q5 = st.radio("5. 胃口不好、食慾不振或吃得太多？", options, index=0)
-        q6 = st.radio("6. 覺得自己很糟、或覺得自己很失敗、或讓家人失望？", options, index=0)
-        q7 = st.radio("7. 專注於事物上有困難，例如看報紙或看電視？", options, index=0)
-        q8 = st.radio("8. 動作或說話速度慢到旁人已注意到？或者相反：煩躁不安、動來動去，比平常更易走動？", options, index=0)
-        q9 = st.radio("9. 有「想要一了百了」或「用某種方式傷害自己」的想法？", options, index=0)
+        q1 = st.radio("1. 做任何事情都提不起勁或沒有樂趣？", options, index=None)
+        q2 = st.radio("2. 感到心情低落、沮喪或絕望？", options, index=None)
+        q3 = st.radio("3. 入睡困難、易醒或睡得太多？", options, index=None)
+        q4 = st.radio("4. 覺得疲倦或沒有活力？", options, index=None)
+        q5 = st.radio("5. 胃口不好、食慾不振或吃得太多？", options, index=None)
+        q6 = st.radio("6. 覺得自己很糟、或覺得自己很失敗、或讓家人失望？", options, index=None)
+        q7 = st.radio("7. 專注於事物上有困難，例如看報紙或看電視？", options, index=None)
+        q8 = st.radio("8. 動作或說話速度慢到旁人已注意到？或者相反：煩躁不安、動來動去，比平常更易走動？", options, index=None)
+        q9 = st.radio("9. 有「想要一了百了」或「用某種方式傷害自己」的想法？", options, index=None)
 
         st.write("")
         col_submit, col_go_hist = st.columns(2)
