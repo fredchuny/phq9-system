@@ -254,7 +254,7 @@ else:
             response = supabase.table("phq_responses")\
                 .select("created_at, patient_id, total_score, severity")\
                 .eq("user_id", current_user.id)\
-                .order("created_at", descending=True)\
+                .order("created_at", desc=True)\
                 .execute()
                 
             records_data = response.data
