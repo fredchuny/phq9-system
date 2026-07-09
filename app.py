@@ -1,6 +1,7 @@
 import streamlit as st
 from supabase import create_client, Client
 import datetime
+import pytz
 
 # ==========================================
 # 1. 網頁基本設定
@@ -17,12 +18,6 @@ st.set_page_config(
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-
-
-
-
 
 
 # ==========================================
@@ -271,15 +266,39 @@ else:
                 st.session_state.current_page = "history"
                 st.rerun()
 
-    # ==========================================
+# ==========================================
     # 頁面三：顯示歷史紀錄頁 (history)
     # ==========================================
     elif st.session_state.current_page == "history":
         st.subheader("📁 患者歷史評估總表")
-        st.write("以下是你登錄過的所有患者檢測紀錄：")
+        
+        # 🎯 1. 允許使用者確認或選擇當前電腦/所在地的時區
+        st.write("### 🌍 時區設定")
+        
+        # 獲取常用時區列表，並將常見時區排在前面供方便選擇
+        common_timezones = [
+            "America/Toronto",      # 預設多倫多/美東時區
+            "Asia/Hong_Kong",       # 香港時區
+            "UTC"
+        ] + sorted(pytz.common_timezones)
+        
+        # 移除重複項並保持順序
+        seen = set()
+        clean_zones = [x for x in common_timezones if not (x in seen or seen.add(x))]
+        
+        user_tz_name = st.selectbox(
+            "請選擇您目前的所在地時區（系統將自動依此轉換顯示時間）：",
+            options=clean_zones,
+            index=0,  # 預設選中 America/Toronto
+            help="系統會自動將資料庫的標準時間轉換為您所選的本地電腦時區"
+        )
+        
+        local_tz = pytz.timezone(user_tz_name)
+        
+        st.divider()
+        st.write(f"以下是您登錄過的所有患者檢測紀錄（目前已切換至：**{user_tz_name}**）：")
         
         try:
-            # 🎯 解決方案 B 核心：在讀取資料前，同樣手動強制注入 Access Token
             session = supabase.auth.get_session()
             if session:
                 supabase.postgrest.auth(session.access_token)
@@ -302,13 +321,21 @@ else:
                 for record in records_data:
                     raw_time = record.get("created_at", "")
                     try:
-                        dt = datetime.datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
-                        formatted_time = dt.strftime("%Y-%m-%d %H:%M")
+                        # 🎯 2. 解析資料庫傳回的 UTC 時間
+                        # Supabase 傳回格式通常為 2026-07-09T20:47:08+00:00
+                        dt_utc = datetime.datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+                        
+                        # 🎯 3. 強制轉換成使用者選擇的本地電腦時區
+                        dt_local = dt_utc.astimezone(local_tz)
+                        
+                        # 🎯 4. 格式化時間並清晰帶上時區簡寫 (例如: EDT, HKT)
+                        tz_abbr = dt_local.strftime("%Z")
+                        formatted_time = f"{dt_local.strftime('%Y-%m-%d %H:%M')} ({tz_abbr})"
                     except Exception:
                         formatted_time = raw_time
                         
                     table_list.append({
-                        "登記時間": formatted_time,
+                        "登記時間 (時區)": formatted_time,
                         "患者編號/代碼": record.get("patient_id", "未填寫"),
                         "PHQ-9 總分": f"{record.get('total_score')} / 27",
                         "狀態評級": record.get("severity")
