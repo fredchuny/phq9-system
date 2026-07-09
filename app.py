@@ -65,7 +65,7 @@ def get_severity(score):
 # 4. 介面渲染
 # ==========================================
 st.title("📊 PHQ-9 完整健康評估系統")
-st.caption("🧑‍⚕️ 模式：工作人員協助患者輸入端")
+st.caption("🧑‍⚕️ 模式：工作人員協助患者輸入端 (安全憑證版)")
 
 # ------------------------------------------
 # 【未登入畫面】
@@ -177,7 +177,11 @@ else:
                     severity = get_severity(total_score)
                     
                     try:
-                        # 寫入 Supabase 資料表（id 為自動產生的 UUID）
+                        # 🎯 解決方案 B 核心：在寫入資料前，手動強制注入 Access Token
+                        session = supabase.auth.get_session()
+                        if session:
+                            supabase.postgrest.auth(session.access_token)
+                        
                         payload = {
                             "user_id": current_user.id,        # 工作人員的 UUID
                             "patient_id": patient_id.strip(),  # 患者代碼
@@ -198,7 +202,7 @@ else:
                         st.rerun()
                         
                     except Exception as e:
-                        st.error(f"❌ 資料寫入失敗，請確認 SQL 是否確實運行成功。詳細錯誤：{e}")
+                        st.error(f"❌ 資料寫入失敗，請確認安全規則是否設定正確。詳細錯誤：{e}")
                         
         with col_go_hist:
             if st.button("📁 檢視所有患者歷史紀錄", use_container_width=True):
@@ -241,6 +245,11 @@ else:
         st.write("以下是你登錄過的所有患者檢測紀錄：")
         
         try:
+            # 🎯 解決方案 B 核心：在讀取資料前，同樣手動強制注入 Access Token
+            session = supabase.auth.get_session()
+            if session:
+                supabase.postgrest.auth(session.access_token)
+                
             # 讀取當前工作人員登記的所有紀錄
             response = supabase.table("phq_responses")\
                 .select("created_at, patient_id, total_score, severity")\
