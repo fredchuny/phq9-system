@@ -35,10 +35,16 @@ if not user:
     if st.button("🚀 使用 Google 帳號登入", type="primary"):
         try:
             # 這裡的 redirectTo 會在登入成功後把使用者帶回你的 Streamlit 網站
-            auth_url = supabase.auth.get_oauth_nav_url({
-                "provider": "google",
-                "redirect_to": st.secrets.get("STREAMLIT_APP_URL", "http://localhost:8501") # 正式環境請在 Secrets 設好網址
+            res = supabase.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {
+            "redirect_to": st.secrets.get("STREAMLIT_APP_URL", "http://localhost:8501")
+                }
             })
+            auth_url = res.url
+
+
+            
             # 透過 Streamlit 的跳轉功能前往 Google
             st.markdown(f'<meta http-equiv="refresh" content="0;URL=\'{auth_url}\'" />', unsafe_allow_html=True)
         except Exception as e:
