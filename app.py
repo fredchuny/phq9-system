@@ -3,169 +3,135 @@ from supabase import create_client, Client
 import datetime
 import pytz
 
-# ==========================================
-# 1. 網頁基本設定
-# ==========================================
-st.set_page_config(
-    page_title="PHQ-9 完整健康評估系統 (代入端)",
-    page_icon="📊",
-    layout="centered"
-)
+# =========================================================================
+# 1. 全域設定與初始化 (fywebapp)
+# =========================================================================
+st.set_page_config(page_title="fywebapp", page_icon="🔑", layout="centered")
 
-# ==========================================
-# 2. 初始化 Supabase 連結
-# ==========================================
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# 初始化 Supabase 連線
+if "supabase" not in st.session_state:
+    st.session_state.supabase = create_client(
+        st.secrets["SUPABASE_URL"], 
+        st.secrets["SUPABASE_KEY"]
+    )
 
-
-# ==========================================
-# 3. 狀態機與登入 Session 鎖定
-# ==========================================
+# 初始化 Session State 導航與用戶狀態
 if "user" not in st.session_state:
     st.session_state.user = None
-    try:
-        session = supabase.auth.get_session()
-        if session and session.user:
-            st.session_state.user = session.user
-    except Exception:
-        pass
-
-# 頁面切換控制："quiz" (寫問卷), "result" (看本次分數), "history" (看過往紀錄)
+if "permissions" not in st.session_state:
+    st.session_state.permissions = {}
 if "current_page" not in st.session_state:
-    st.session_state.current_page = "quiz"
+    st.session_state.current_page = "login"
 
-if "last_score" not in st.session_state:
-    st.session_state.last_score = 0
-
-if "last_severity" not in st.session_state:
-    st.session_state.last_severity = ""
-
-if "last_patient" not in st.session_state:
-    st.session_state.last_patient = ""
-
-# 登出邏輯
-def logout():
-    try:
-        supabase.auth.sign_out()
-    except Exception:
-        pass
-    st.session_state.user = None
-    st.session_state.current_page = "quiz"
-
-# 評級邏輯
-def get_severity(score):
-    if score <= 4: return "無或極輕微憂鬱 (Minimal)"
-    elif score <= 9: return "輕度憂鬱 (Mild)"
-    elif score <= 14: return "中度憂鬱 (Moderate)"
-    elif score <= 19: return "中重度憂鬱 (Moderately Severe)"
-    else: return "重度憂鬱 (Severe)"
-
-# ==========================================
-# 4. 介面渲染
-# ==========================================
-st.title("📊 PHQ-9 完整健康評估系統")
-st.caption("🧑‍⚕️ 模式：工作人員協助患者輸入端 (安全憑證版)")
-
-# ------------------------------------------
-# 【未登入畫面】
-# ------------------------------------------
-if st.session_state.user is None:
-    st.info("👋 歡迎使用！請登入工作人員帳號以開始為患者進行評估。")
-    tab1, tab2, tab3 = st.tabs(["🔑 密碼登入", "🚀 Google 快速登入", "🎨 演示快速通道"])
+# =========================================================================
+# 頁面 A：中央控制登入入口 (Central Login)
+# =========================================================================
+if st.session_state.current_page == "login":
+    st.title("🔑 fywebapp")
+    st.subheader("中央控制安全登入系統")
+    st.write("請使用您的工作人員帳號登入以存取授權功能。")
     
-    with tab1:
-        email = st.text_input("電子信箱", key="login_email", placeholder="staff@example.com")
-        password = st.text_input("密碼", type="password", key="login_password", placeholder="請輸入密碼")
+    with st.form("central_login_form"):
+        email = st.text_input("工作人員電子信箱 (Email)")
+        password = st.text_input("密碼 (Password)", type="password")
+        submit = st.form_submit_button("安全登入")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("登入", type="primary", use_container_width=True):
-                if not email or not password:
-                    st.warning("請填寫電子信箱與密碼！")
-                else:
-                    try:
-                        res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                        st.session_state.user = res.user
-                        st.session_state.current_page = "quiz"
-                        st.success("登入成功！")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ 登入失敗：{e}")
-                            
-        with col2:
-            if st.button("註冊新帳號", use_container_width=True):
-                if not email or not password:
-                    st.warning("請輸入欲註冊的電子信箱與密碼！")
-                elif len(password) < 6:
-                    st.warning("密碼長度至少需要 6 個字元！")
-                else:
-                    try:
-                        res = supabase.auth.sign_up({"email": email, "password": password})
-                        st.success("📨 註冊確認信已寄出！請至您的信箱點擊驗證連結後返回登入。")
-                    except Exception as e:
-                        st.error(f"❌ 註冊失敗：{e}")
-
-    with tab2:
-        if st.button("使用 Google 帳號快速登入", type="secondary", use_container_width=True):
-            try:
-                res = supabase.auth.sign_in_with_oauth({
-                    "provider": "google",
-                    "options": {
-                        "redirect_to": "https://afancfdlwnbokaohkrsy.supabase.co/auth/v1/callback"
-                    }
-                })
-                auth_url = res.url
-                st.markdown(f'<meta http-equiv="refresh" content="0;URL=\'{auth_url}\'" />', unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"❌ 啟動 Google 登入失敗：{e}")
-# 【Tab 3: 演示快速通道】
-    with tab3:
-        st.write("如果您是受邀參與功能演示，請輸入主辦方提供的 **6 位數演示代碼** 快速進入系統：")
-        
-        # 建立一個只接受數字或簡短文字的輸入框
-        demo_code = st.text_input("請輸入演示代碼", type="password", placeholder="請輸入 6 位數代碼", key="demo_code_input")
-        
-        if st.button("🚀 免信箱快速登入", type="primary", use_container_width=True):
-            # 🎯 在這裡設定你想要的數字暗號
-            if demo_code == "123456": 
+        if submit:
+            if email and password:
                 try:
-                    # 關鍵：這裡替換成你剛剛在步驟 1 預先建立、驗證好的 Supabase 帳號與密碼
-                    res = supabase.auth.sign_in_with_password({
-                        "email": "demo@example.com",  # 填入你預先建好的 demo 帳號
-                        "password": "YourDemoPassword123"  # 填入該帳號的密碼
+                    # 1. 驗證帳密登入 (觸發 Supabase authenticated 角色)
+                    res = st.session_state.supabase.auth.sign_in_with_password({
+                        "email": email, 
+                        "password": password
                     })
-                    
                     st.session_state.user = res.user
-                    st.session_state.current_page = "quiz"
-                    st.success("演示帳號登入成功！正在導向評估面板...")
+                    
+                    # 2. 登入成功後，立刻去資料庫撈取該用戶的權限清單 (Feature Toggles)
+                    role_resp = st.session_state.supabase.table("user_roles").select("*").eq("user_id", res.user.id).execute()
+                    
+                    if role_resp.data:
+                        st.session_state.permissions = role_resp.data[0]
+                    else:
+                        # 預防機制：如果在 user_roles 找不到對應資料，預設全關閉以保安全
+                        st.session_state.permissions = {
+                            "can_access_phq9": False, 
+                            "can_access_gad7": False, 
+                            "can_access_analytics": False
+                        }
+                    
+                    st.success("安全驗證成功！正在導向主控制面板...")
+                    st.session_state.current_page = "dashboard"
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ 演示通道後台連線失敗：{e}")
-            elif not demo_code:
-                st.warning("請輸入代碼！")
+                    st.error(f"❌ 登入失敗：請確認帳號密碼是否正確。")
             else:
-                st.error("❌ 代碼錯誤！請向管理員索取正確的演示代碼。")
+                st.warning("請填寫所有欄位！")
 
-
-# ------------------------------------------
-# 【已登入畫面】
-# ------------------------------------------
-else:
-    current_user = st.session_state.user
-    col_user, col_logout = st.columns([4, 1])
-    with col_user:
-        st.write(f"🟢 **目前登入工作人員：** `{current_user.email}`")
-    with col_logout:
-        st.button("登出系統", on_click=logout, type="secondary", use_container_width=True)
+# =========================================================================
+# 頁面 B：中央主控面板 (Dashboard)
+# =========================================================================
+elif st.session_state.current_page == "dashboard":
+    st.title("🌐 fywebapp 中央主控面板")
+    st.write(f"目前登入帳號: `{st.session_state.user.email}`")
+    
+    # 側邊欄全域安全登出
+    if st.sidebar.button("🚪 安全登出系統"):
+        st.session_state.supabase.auth.sign_out()
+        st.session_state.user = None
+        st.session_state.permissions = {}
+        st.session_state.current_page = "login"
+        st.rerun()
         
     st.divider()
+    st.write("### 🗂️ 您獲權存取的系統功能模組：")
+    
+    perms = st.session_state.permissions
+    has_any_permission = False
+    
+    # 🎯 權限分流：依據資料庫的打勾 (True/False) 動態顯示按鈕
+    if perms.get("can_access_phq9"):
+        has_any_permission = True
+        if st.button("📝 進入 PHQ-9 臨床評估系統", use_container_width=True):
+            st.session_state.current_page = "phq9_module"
+            st.rerun()
+            
+    if perms.get("can_access_gad7"):
+        has_any_permission = True
+        if st.button("📊 進入 GAD-7 焦慮評估系統 (未來擴充)", use_container_width=True):
+            st.session_state.current_page = "gad7_module"
+            st.rerun()
+            
+    if perms.get("can_access_analytics"):
+        has_any_permission = True
+        if st.button("📈 進入 機構數據分析後台 (未來擴充)", use_container_width=True):
+            st.session_state.current_page = "analytics_module"
+            st.rerun()
+            
+    if not has_any_permission:
+        st.warning("⚠️ 您的帳號目前未獲指派任何特定模組功能。請聯絡系統管理員在後台核發權限。")
 
-    # ==========================================
-    # 頁面一：填寫問卷 (quiz)
-    # ==========================================
-    if st.session_state.current_page == "quiz":
+# =========================================================================
+# 頁面 C：PHQ-9 臨床評估系統模組 (phq9_module)
+# =========================================================================
+elif st.session_state.current_page == "phq9_module":
+    # 二次前端守衛，防止非法跳轉
+    if not st.session_state.permissions.get("can_access_phq9"):
+        st.error("⛔ 您沒有權限存取此模組。")
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+        
+    st.title("📝 PHQ-9 抑鬱症狀臨床評估")
+    
+    # 返回主面板按鈕
+    if st.button("⬅️ 返回 fywebapp 主控制面板"):
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+        
+    st.divider()
+    
+    # ---------------------------------------------------------------------
+    # 💡 這裡放妳原本完整的 PHQ-9 程式碼邏輯 
+    # (例如：st.tabs(["基本資料", "問卷填寫", "歷史紀錄"])、妳的資料寫入與時間轉換邏輯等)
         st.subheader("📋 患者健康問卷 (PHQ-9)")
         
         st.write("### 🧑‍🦽 1. 患者基本資訊")
@@ -357,3 +323,45 @@ else:
         if st.button("⬅️ 返回填寫面板", type="secondary", use_container_width=True):
             st.session_state.current_page = "quiz"
             st.rerun()
+
+
+
+
+
+
+    
+    # ---------------------------------------------------------------------
+    st.info("💡 妳原本做好的 PHQ-9 量表填寫、自動計分、時區轉換與歷史紀錄總表功能，將會完美呈現在此區塊中！")
+    
+    # 範例：安全寫入資料庫時拿取當前使用者真實 UUID 的寫法：
+    # current_uid = st.session_state.user.id
+
+# =========================================================================
+# 頁面 D：未來功能：GAD-7 焦慮評估系統模組 (gad7_module)
+# =========================================================================
+elif st.session_state.current_page == "gad7_module":
+    if not st.session_state.permissions.get("can_access_gad7"):
+        st.error("⛔ 您沒有權限存取此模組。")
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+        
+    st.title("📊 GAD-7 焦慮評估系統")
+    if st.button("⬅️ 返回 fywebapp 主控制面板"):
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+    st.write("這裡是未來可以擴充的 GAD-7 功能頁面。")
+
+# =========================================================================
+# 頁面 E：未來功能：機構數據分析後台 (analytics_module)
+# =========================================================================
+elif st.session_state.current_page == "analytics_module":
+    if not st.session_state.permissions.get("can_access_analytics"):
+        st.error("⛔ 您沒有權限存取此模組。")
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+        
+    st.title("📈 機構數據分析後台")
+    if st.button("⬅️ 返回 fywebapp 主控制面板"):
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+    st.write("這裡是未來可以擴充的數據統計與圖表面板。")
