@@ -19,6 +19,43 @@ st.html(
     """
 )
 
+
+st.html(
+    """
+    <style>
+    /* 定義卡片容器與按鈕樣式 */
+    div[data-testid="column"] {
+        background-color: #fcfcfc;
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid #f0f0f0;
+        transition: transform 0.2s;
+    }
+    div[data-testid="column"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+    
+    /* 讓卡片內部的 Streamlit 按鈕隱形，點擊整張卡片區域都生效 */
+    div[data-testid="column"] button {
+        background: transparent !important;
+        border: none !important;
+        color: #333333 !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        width: 100% !important;
+        height: 100px !important; /* 控制卡片高度 */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 10px !important;
+    }
+    </style>
+    """
+)
+
+
 # =========================================================================
 # 臨床輔助函式
 # =========================================================================
@@ -190,48 +227,50 @@ elif st.session_state.current_page == "dashboard":
     st.write(t[lang]["dash_section"])
     
     perms = st.session_state.permissions
-    has_any = False
     
-    # 🎯 已解鎖的可用模組全部升級為 type="primary" 醒目大按鈕
+    # 開始建立雙欄網格
+    # 這裡我們用一個清單來動態收集目前「有權限開啟」的模組
+    active_modules = []
+    
     if perms.get("can_access_phq9"):
-        has_any = True
-        if st.button(t[lang]["btn_phq9"], use_container_width=True, type="primary"): 
-            st.session_state.current_page = "quiz"
-            st.rerun()
-
+        active_modules.append({"label": f"📝\n{t[lang]['btn_phq9']}", "page": "quiz"})
     if perms.get("can_access_water"):
-        has_any = True
-        if st.button(t[lang]["btn_water"], use_container_width=True, type="primary"): 
-            st.session_state.current_page = "water_module"
-            st.rerun()
-
+        active_modules.append({"label": f"💧\n{t[lang]['btn_water']}", "page": "water_module"})
     if perms.get("can_access_bujo"):
-        has_any = True
-        if st.button(t[lang]["btn_bujo"], use_container_width=True, type="primary"): 
-            st.session_state.current_page = "bujo_module"
-            st.rerun()
-
+        active_modules.append({"label": f"📓\n{t[lang]['btn_bujo']}", "page": "bujo_module"})
     if perms.get("can_access_food_picker"):
-        has_any = True
-        if st.button(t[lang]["btn_food"], use_container_width=True, type="primary"): 
-            st.session_state.current_page = "food_module"
-            st.rerun()
-            
-    # ⏳ 未來擴充模組保持普通樣式，做出明顯的視覺區隔
-    if perms.get("can_access_gad7"):
-        has_any = True
-        if st.button(t[lang]["btn_gad7"], use_container_width=True): 
-            st.session_state.current_page = "gad7_module"
-            st.rerun()
-            
-    if perms.get("can_access_analytics"):
-        has_any = True
-        if st.button(t[lang]["btn_analytics"], use_container_width=True): 
-            st.session_state.current_page = "analytics_module"
-            st.rerun()
-            
-    if not has_any:
+        active_modules.append({"label": f"🍱\n{t[lang]['btn_food']}", "page": "food_module"})
+
+    if not active_modules:
         st.warning(t[lang]["no_perm"])
+    else:
+        # 每兩個模組分配到一列 (Row)
+        for i in range(0, len(active_modules), 2):
+            cols = st.columns(2)
+            
+            # 第一欄卡片
+            if i < len(active_modules):
+                with cols[0]:
+                    # 使用 \n 換行，讓 Emoji 在上、文字在下
+                    if st.button(active_modules[i]["label"], key=f"grid_{i}", use_container_width=True):
+                        st.session_state.current_page = active_modules[i]["page"]
+                        st.rerun()
+            
+            # 第二欄卡片
+            if i + 1 < len(active_modules):
+                with cols[1]:
+                    if st.button(active_modules[i+1]["label"], key=f"grid_{i+1}", use_container_width=True):
+                        st.session_state.current_page = active_modules[i+1]["page"]
+                        st.rerun()
+
+        # ⏳ 未來擴充模組（保持在網格下方，提示使用者這是即將推出的功能）
+        st.divider()
+        st.write("### ⏳ 未來擴充功能 (Coming Soon)")
+        cols_future = st.columns(2)
+        with cols_future[0]:
+            st.button(t[lang]["btn_gad7"], use_container_width=True, disabled=True)
+        with cols_future[1]:
+            st.button(t[lang]["btn_analytics"], use_container_width=True, disabled=True)
 
 # =========================================================================
 # 頁面 C-1：PHQ-9 問卷作答頁面
