@@ -5,6 +5,20 @@ import pytz
 import pandas as pd
 import random
 
+st.html(
+    """
+    <style>
+    /* Targets only Streamlit primary buttons */
+    div[data-testid="stButton"] button[kind="primary"] {
+        padding-top: 15px !important;
+        padding-bottom: 15px !important;
+        font-size: 20px !important;
+        font-weight: bold !important;
+    }
+    </style>
+    """
+)
+
 # =========================================================================
 # 臨床輔助函式
 # =========================================================================
