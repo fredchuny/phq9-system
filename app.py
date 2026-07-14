@@ -21,7 +21,7 @@ def get_severity(score, lang="zh"):
 # =========================================================================
 # 1. 全域設定與初始化 (fywebapp)
 # =========================================================================
-st.set_page_config(page_title="fywebapp", page_icon="🔑", layout="centered")
+st.set_page_config(page_title="FY Web App", page_icon="🔑", layout="centered")
 
 if "supabase" not in st.session_state:
     st.session_state.supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -37,7 +37,7 @@ lang = "zh" if selected_lang == lang_options[0] else "en"
 
 t = {
     "zh": {
-        "login_title": "👋🏼 歡迎來到 fywebapp",
+        "login_title": "👋🏼 歡迎來到 FY Web App",
         "login_subtitle": "中央控制安全登入系統",
         "login_desc": "請在下方輸入您的工作人員帳號，開啟您的專屬工作面板 ✨",
         "email_label": "電子信箱 (Email)",
