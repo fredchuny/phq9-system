@@ -145,7 +145,7 @@ if st.session_state.current_page == "login":
                 st.error(t[lang]["login_fail"])
 
 # =========================================================================
-# 頁面 B：中央主控面板
+# 頁面 B：中央主控面板 (已將可用模組升級為醒目大按鈕)
 # =========================================================================
 elif st.session_state.current_page == "dashboard":
     st.title(t[lang]["dash_title"])
@@ -156,29 +156,43 @@ elif st.session_state.current_page == "dashboard":
     perms = st.session_state.permissions
     has_any = False
     
+    # 🎯 已解鎖的可用模組全部升級為 type="primary" 醒目大按鈕
     if perms.get("can_access_phq9"):
         has_any = True
-        if st.button(t[lang]["btn_phq9"], use_container_width=True): st.session_state.current_page = "quiz"; st.rerun()
+        if st.button(t[lang]["btn_phq9"], use_container_width=True, type="primary"): 
+            st.session_state.current_page = "quiz"
+            st.rerun()
 
     if perms.get("can_access_water"):
         has_any = True
-        if st.button(t[lang]["btn_water"], use_container_width=True): st.session_state.current_page = "water_module"; st.rerun()
+        if st.button(t[lang]["btn_water"], use_container_width=True, type="primary"): 
+            st.session_state.current_page = "water_module"
+            st.rerun()
 
     if perms.get("can_access_bujo"):
         has_any = True
-        if st.button(t[lang]["btn_bujo"], use_container_width=True): st.session_state.current_page = "bujo_module"; st.rerun()
+        if st.button(t[lang]["btn_bujo"], use_container_width=True, type="primary"): 
+            st.session_state.current_page = "bujo_module"
+            st.rerun()
 
     if perms.get("can_access_food_picker"):
         has_any = True
-        if st.button(t[lang]["btn_food"], use_container_width=True): st.session_state.current_page = "food_module"; st.rerun()
+        if st.button(t[lang]["btn_food"], use_container_width=True, type="primary"): 
+            st.session_state.current_page = "food_module"
+            st.rerun()
             
+    # ⏳ 未來擴充模組保持普通樣式，做出明顯的視覺區隔
     if perms.get("can_access_gad7"):
         has_any = True
-        if st.button(t[lang]["btn_gad7"], use_container_width=True): st.session_state.current_page = "gad7_module"; st.rerun()
+        if st.button(t[lang]["btn_gad7"], use_container_width=True): 
+            st.session_state.current_page = "gad7_module"
+            st.rerun()
             
     if perms.get("can_access_analytics"):
         has_any = True
-        if st.button(t[lang]["btn_analytics"], use_container_width=True): st.session_state.current_page = "analytics_module"; st.rerun()
+        if st.button(t[lang]["btn_analytics"], use_container_width=True): 
+            st.session_state.current_page = "analytics_module"
+            st.rerun()
             
     if not has_any:
         st.warning(t[lang]["no_perm"])
