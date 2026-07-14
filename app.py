@@ -8,48 +8,38 @@ import random
 st.html(
     """
     <style>
-    /* Targets only Streamlit primary buttons */
-    div[data-testid="stButton"] button[kind="primary"] {
-        padding-top: 15px !important;
-        padding-bottom: 15px !important;
-        font-size: 20px !important;
-        font-weight: bold !important;
+    /* 1. 設定外層網格欄位的背景與圓角 */
+    div[data-testid="stColumn"] {
+        background-color: #fcfcfc !important;
+        border-radius: 12px !important;
+        padding: 0px !important; /* 讓按鈕可以貼齊外框 */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+        border: 1px solid #e0e0e0 !important;
+        transition: transform 0.2s !important;
+        overflow: hidden !important;
     }
-    </style>
-    """
-)
-
-
-st.html(
-    """
-    <style>
-    /* 定義卡片容器與按鈕樣式 */
-    div[data-testid="column"] {
-        background-color: #fcfcfc;
-        border-radius: 12px;
-        padding: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #f0f0f0;
-        transition: transform 0.2s;
-    }
-    div[data-testid="column"]:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    div[data-testid="stColumn"]:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
     }
     
-    /* 讓卡片內部的 Streamlit 按鈕隱形，點擊整張卡片區域都生效 */
-    div[data-testid="column"] button {
+    /* 2. 強制把內部的按鈕高度、字體與間距撐大 */
+    div[data-testid="stColumn"] button[data-testid="baseButton-secondary"] {
         background: transparent !important;
         border: none !important;
         color: #333333 !important;
-        font-size: 18px !important;
+        
+        /* 💡 關鍵：這裡控制按鈕的整體高度與字體大小 */
+        height: 120px !important; 
+        font-size: 22px !important; 
         font-weight: bold !important;
+        
         width: 100% !important;
-        height: 100px !important; /* 控制卡片高度 */
         display: flex !important;
         align-items: center !important;
-        justify-content: space-between !important;
-        padding: 10px !important;
+        justify-content: center !important;
+        white-space: pre-line !important; /* 允許文字換行 */
+        line-height: 1.4 !important;
     }
     </style>
     """
