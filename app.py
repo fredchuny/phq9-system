@@ -16,16 +16,38 @@ def get_severity(score, lang="zh"):
     return "重度抑鬱 (20-27分)" if lang == "zh" else "Severe depression (20-27 pts)"
 
 # =========================================================================
-# 1. 全域設定與初始化 (fywebapp)
+# 1. 全域設定與初始化 (連線快取優化)
 # =========================================================================
 st.set_page_config(page_title="FY Web App", page_icon="🌼", layout="centered")
 
+# 使用 cache_resource 優化 Supabase 連線效率
+@st.cache_resource
+def init_supabase():
+    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+
 if "supabase" not in st.session_state:
-    st.session_state.supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+    st.session_state.supabase = init_supabase()
+
+# 安全機制：確保每次執行都檢查並自動刷新 Session / RLS 憑證
+def sync_supabase_auth():
+    try:
+        # get_session() 會在背後自動處理 Token 刷新
+        session = st.session_state.supabase.auth.get_session()
+        if session and session.access_token:
+            st.session_state.supabase.postgrest.auth(session.access_token)
+    except Exception as e:
+        # 如果 Token 徹底過期或無效，清空 session 並導回登入頁
+        st.session_state.user = None
+        st.session_state.current_page = "login"
 
 if "user" not in st.session_state: st.session_state.user = None
 if "permissions" not in st.session_state: st.session_state.permissions = {}
 if "current_page" not in st.session_state: st.session_state.current_page = "login"
+
+# 執行 RLS 身分同步
+if st.session_state.user:
+    sync_supabase_auth()
+
 
 # 多國語言字典設定
 lang_options = ["繁體中文 (Traditional Chinese)", "English"]
