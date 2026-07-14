@@ -276,7 +276,9 @@ elif st.session_state.current_page == "water_module":
         notes = st.text_input(t[lang]["water_notes"], placeholder=t[lang]["water_notes_placeholder"])
         if st.form_submit_button("💾 Save") and amount > 0:
             try:
-                session = st.session_state.supabase.auth.get_session(); if session: st.session_state.supabase.postgrest.auth(session.access_token)
+                session = st.session_state.supabase.auth.get_session()
+if session:
+    st.session_state.supabase.postgrest.auth(session.access_token)
                 st.session_state.supabase.table("water_logs").insert({"user_id": st.session_state.user.id, "amount_ml": int(amount), "notes": notes.strip()}).execute()
                 st.success(t[lang]["water_success"].format(amount))
             except Exception as e: st.error(f"Error: {e}")
