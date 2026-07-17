@@ -550,6 +550,56 @@ elif st.session_state.current_page == "food_module":
         st.dataframe(pd.DataFrame(display_list), use_container_width=True, hide_index=True)
 
 # =========================================================================
+# 頁面 G：525APP_yyems 獨立核心數據面板
+# =========================================================================
+elif st.session_state.current_page == "yyems_page":
+    st.title(t[lang]["yyems_lab_title"])
+    
+    # 頂部與側邊欄雙返回機制，方便快速切換
+    if st.button(t[lang]["btn_back_dash"], key="top_back_yyems"):
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+        
+    if st.sidebar.button(t[lang]["btn_back_dash"], key="side_back_yyems"):
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+        
+    try:
+        # 安全機制：確保每次執行都檢查並自動刷新 Session / RLS 憑證
+        session = st.session_state.supabase.auth.get_session()
+        if session: 
+            st.session_state.supabase.postgrest.auth(session.access_token)
+            
+        st.caption(t[lang]["yyems_lab_caption"])
+        st.divider()
+        
+        # 直接從 525APP_yyems 表格撈取數據 (限定最新 50 筆防止長列表加載卡頓)
+        resp = st.session_state.supabase.table("525APP_yyems").select("*").order("DateTime", desc=True).limit(50).execute()
+        records = resp.data
+        
+        if not records:
+            st.warning(t[lang]["yyems_lab_err"])
+        else:
+            df = pd.DataFrame(records)
+            
+            # 關鍵字篩選功能測試
+            search_query = st.text_input(t[lang]["search_placeholder"], "")
+            if search_query:
+                # 彈性檢查大表常見的文字欄位進行篩選
+                for col in ["description", "remark", "YYEMS ID"]:
+                    if col in df.columns:
+                        df = df[df[col].astype(str).str.contains(search_query, case=False, na=False)]
+                        break
+            
+            # 使用 Streamlit 內建的互動式表格呈現
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.info(f"Loaded {len(df)} live records from Supabase.")
+            
+    except Exception as e:
+        st.error(f"Error connecting to Supabase: {e}")
+
+
+# =========================================================================
 # 未來擴充佔位頁面
 # =========================================================================
 elif st.session_state.current_page == "gad7_module":
