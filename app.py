@@ -550,7 +550,7 @@ elif st.session_state.current_page == "food_module":
         st.dataframe(pd.DataFrame(display_list), use_container_width=True, hide_index=True)
 
 # =========================================================================
-# 頁面 G：525APP_yyems 獨立核心數據與圖表分析面板 (財務透視與每月圓餅圖版)
+# 頁面 G：525APP_yyems 獨立核心數據與圖表分析面板 (精簡無漸層、原生圖表版)
 # =========================================================================
 elif st.session_state.current_page == "yyems_page":
     st.title(t[lang]["yyems_lab_title"])
@@ -591,10 +591,9 @@ elif st.session_state.current_page == "yyems_page":
                 df_all["auto_div_amount"] = pd.to_numeric(df_all["auto_div_amount"], errors='coerce').fillna(0)
             if "auto_stat_month" in df_all.columns:
                 df_all["auto_stat_month"] = df_all["auto_stat_month"].astype(str)
-                # 排除可能無效的月份資料
                 df_all = df_all[df_all["auto_stat_month"] != "nan"]
             
-            # 確保有分類欄位，若名稱不同請依實際情況微調
+            # 辨識分類欄位
             cat_col = "auto_vendor_一級分類" if "auto_vendor_一級分類" in df_all.columns else "In_or_out"
             
             # --- 🔍 專屬高級雙過濾控制面板 ---
@@ -630,15 +629,14 @@ elif st.session_state.current_page == "yyems_page":
             
             st.divider()
             
-            # 計算當前篩選下的總計
+            # 計算並顯示當前篩選下的總計
             total_calc_amount = df_filtered["auto_div_amount"].sum() if "auto_div_amount" in df_filtered.columns else 0.0
             st.metric(label="💰 當前篩選條件下計算總額 (Total via auto_div_amount)", value=f"${total_calc_amount:,.2f}")
             
             st.divider()
             
-            # --- 📊 需求 1：完美複製 Excel 交叉分析樞紐表 (Pivot Table Matrix) ---
+            # --- 🗂️ 1. 歷史每月分類交叉透視表 (純數字格式化，完美修復跳錯) ---
             st.write("### 🗂️ 歷史每月分類交叉透視表 (對標 Excel Pivot Table)")
-            st.caption("💡 這對齊了你截圖中的 Google Sheets 功能：橫列為月份、縱欄為分類、格內為 `auto_div_amount` 加總。")
             
             if "auto_stat_month" in df_filtered.columns and cat_col in df_filtered.columns:
                 # 建立透視表
@@ -650,48 +648,47 @@ elif st.session_state.current_page == "yyems_page":
                     fill_value=0
                 ).sort_index(ascending=True)
                 
-                # 計算 Grand Total（橫列與縱欄的加總）
+                # 計算 Grand Total 横列加總
                 pivot_df["Total Grand Total"] = pivot_df.sum(axis=1)
                 
-                # 為了讓外觀與 Excel 類似，使用 dataframe 漂亮渲染並帶有負數辨識能力
-                st.dataframe(pivot_df.style.format("{:,.2f}").background_gradient(cmap="RdYlGn", axis=0), use_container_width=True)
+                # 🎯 方案 A：完全拿掉 background_gradient 顏色，只留乾淨的千分位小數格式化
+                st.dataframe(pivot_df.style.format("{:,.2f}"), use_container_width=True)
             
             st.divider()
             
-            # --- 🍕 需求 2：自訂月份比較與每月圓餅圖區塊 ---
+            # --- 🍕 2. 每月類別佔比分析 (升級為 Streamlit 內建動態圓餅圖) ---
             st.write("### 🍕 每月類別佔比分析 (Pie Chart per Month)")
             
             if "auto_stat_month" in df_filtered.columns:
-                # 抓出當前篩選資料中所有可用的月份清單
                 available_months = sorted(df_filtered["auto_stat_month"].unique().tolist(), reverse=True)
                 
                 if available_months:
-                    # 讓使用者自由挑選想查看/比對哪一個月份的圓餅圖
                     selected_month = st.selectbox("📅 選擇要查看佔比的指定月份：", options=available_months, index=0)
-                    
-                    # 過濾出該月份的數據
                     df_month = df_filtered[df_filtered["auto_stat_month"] == selected_month]
                     
-                    # 根據類別加總金額 (取絕對值以便圓餅圖能正常顯示比例，因記帳常有負數)
+                    # 依類別加總金額並取絕對值算比例
                     pie_data = df_month.groupby(cat_col)["auto_div_amount"].sum().reset_index()
-                    # 💡 對於記帳支出（負數），轉為正數來算佔比
                     pie_data["display_amount"] = pie_data["auto_div_amount"].abs()
                     
                     if not pie_data.empty and pie_data["display_amount"].sum() > 0:
-                        # 建立圓餅圖數據字典，以便使用 streamlit 原生組件或做清晰清單
                         st.write(f"#### 📊 {selected_month} 月份 - 各類別金額與比例明細")
                         
                         col_pie_chart, col_pie_table = st.columns([1, 1])
+                        
                         with col_pie_table:
-                            # 顯示數值清單對照
+                            # 顯示純文字清單對照
                             pie_data["比例 (%)"] = (pie_data["display_amount"] / pie_data["display_amount"].sum() * 100).round(1)
                             st.dataframe(
                                 pie_data[[cat_col, "auto_div_amount", "比例 (%)"]].rename(columns={"auto_div_amount": "實際加總金額"}),
                                 use_container_width=True, hide_index=True
                             )
+                            
                         with col_pie_chart:
-                            # 使用 Streamlit 內建高效率圖表呈現佔比關係
-                            st.pyplot(df_month.groupby(cat_col)["auto_div_amount"].sum().plot.pie(autopct='%1.1f%%', ylabel='').get_figure())
+                            # 🎯 升級：完全不用 matplotlib，直接改用內建支援的互動式 Pie Chart
+                            import plotly.express as px
+                            fig = px.pie(pie_data, values="display_amount", names=cat_col, hole=0.3)
+                            fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), showlegend=False)
+                            st.plotly_chart(fig, use_container_width=True)
                     else:
                         st.info("ℹ️ 該月份無足夠的金額數據生成圓餅圖。")
                 else:
@@ -699,7 +696,7 @@ elif st.session_state.current_page == "yyems_page":
             
             st.divider()
             
-            # --- 📜 原始明細清單 ---
+            # --- 📜 3. 原始明細清單 ---
             st.write(f"📋 **交易原始明細：共 {len(df_filtered)} 筆**")
             st.dataframe(df_filtered, use_container_width=True, hide_index=True)
             
