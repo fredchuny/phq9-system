@@ -656,8 +656,8 @@ elif st.session_state.current_page == "yyems_page":
             
             st.divider()
             
-            # --- 🍕 2. 每月類別佔比分析 (升級為 Streamlit 內建動態圓餅圖) ---
-            st.write("### 🍕 每月類別佔比分析 (Pie Chart per Month)")
+# --- 🍕 2. 每月類別佔比分析 (100% 原生無套件圖表版) ---
+            st.write("### 🍕 每月類別佔比分析 (Category Analysis per Month)")
             
             if "auto_stat_month" in df_filtered.columns:
                 available_months = sorted(df_filtered["auto_stat_month"].unique().tolist(), reverse=True)
@@ -684,13 +684,12 @@ elif st.session_state.current_page == "yyems_page":
                             )
                             
                         with col_pie_chart:
-                            # 🎯 升級：完全不用 matplotlib，直接改用內建支援的互動式 Pie Chart
-                            import plotly.express as px
-                            fig = px.pie(pie_data, values="display_amount", names=cat_col, hole=0.3)
-                            fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), showlegend=False)
-                            st.plotly_chart(fig, use_container_width=True)
+                            # 🎯 終極修復：完全不用 plotly / matplotlib！
+                            # 直接使用 Streamlit 內建原生 st.bar_chart 來表達該月各分類的相對佔比
+                            chart_data = pie_data.set_index(cat_col)[["display_amount"]].rename(columns={"display_amount": "佔比權重 (絕對值)"})
+                            st.bar_chart(chart_data, use_container_width=True)
                     else:
-                        st.info("ℹ️ 該月份無足夠的金額數據生成圓餅圖。")
+                        st.info("ℹ️ 該月份無足夠的金額數據生成圖表。")
                 else:
                     st.info("📭 沒有可用的月份數據。")
             
